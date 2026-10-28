@@ -52,7 +52,7 @@ Output: `kde-dotfiles-YYYY-MM-DD_HH-MM-SS.zip` in the same folder as the script.
 
 ### KDEdotfilesLOAD/load_dotfiles.py
 
-Finds all backups in `KDEdotfilesSAVE/` and lets you choose which categories to restore. Each prompt is a single keypress - no Enter needed.
+Finds all backups next to the script (or in a sibling `KDEdotfilesSAVE/` folder) and lets you choose which categories to restore. Each prompt is a single keypress - no Enter needed.
 
 **Usage:**
 

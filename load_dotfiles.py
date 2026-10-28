@@ -8,7 +8,9 @@ from pathlib import Path
 from tqdm import tqdm
 
 HOME = Path.home()
-SAVE_DIR = Path(__file__).parent.resolve().parent / "KDEdotfilesSAVE"
+SCRIPT_DIR = Path(__file__).parent.resolve()
+SAVE_DIRS = [SCRIPT_DIR, SCRIPT_DIR.parent / "KDEdotfilesSAVE"]
+MAX_LISTED_BACKUPS = 9
 
 CATEGORIES = [
     ("KDE core settings",    [".config/kdeglobals", ".config/kwinrc", ".config/kwinrulesrc",
@@ -60,10 +62,10 @@ def select_backup(backups):
         print(f"Using: {backups[0].name}\n")
         return backups[0]
 
-    cap = min(len(backups), 9)
+    cap = min(len(backups), MAX_LISTED_BACKUPS)
 
-    print("Available backups:")
-    for i, backup in enumerate(backups, 1):
+    print("Available backups (newest first):")
+    for i, backup in enumerate(backups[:cap], 1):
         print(f"  {i}. {backup.name}")
     print(f"\nSelect [1-{cap}]: ", end="", flush=True)
 
@@ -92,18 +94,29 @@ def restore(zip_path, selected_prefixes):
             print("Nothing to restore.")
             return
         for entry in tqdm(to_restore, unit="file", desc="Restoring", dynamic_ncols=True):
-            dest = HOME / entry
+            dest = (HOME / entry).resolve()
+            if not dest.is_relative_to(HOME.resolve()):
+                tqdm.write(f"  skipped: {entry} (points outside your home folder)")
+                continue
             dest.parent.mkdir(parents=True, exist_ok=True)
             try:
                 dest.write_bytes(zf.read(entry))
+                restore_permissions(dest, zf.getinfo(entry))
             except (PermissionError, OSError) as e:
                 tqdm.write(f"  skipped: {dest} ({e})")
 
 
+def restore_permissions(dest, info):
+    mode = (info.external_attr >> 16) & 0o777
+    if mode:
+        dest.chmod(mode)
+
+
 def main():
-    backups = sorted(SAVE_DIR.glob("kde-dotfiles-*.zip"), reverse=True)
+    found = {path.resolve() for folder in SAVE_DIRS for path in folder.glob("kde-dotfiles-*.zip")}
+    backups = sorted(found, key=lambda path: path.name, reverse=True)
     if not backups:
-        print(f"No backups found in {SAVE_DIR}")
+        print(f"No backups found in {' or '.join(str(folder) for folder in SAVE_DIRS)}")
         sys.exit(1)
 
     zip_path = select_backup(backups)
