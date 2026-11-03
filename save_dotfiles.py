@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import subprocess
 import zipfile
@@ -92,7 +93,37 @@ def create_zip(files, output_path):
                 tqdm.write(f"  skipped: {file} ({e})")
 
 
+def format_size(num_bytes):
+    for unit in ("B", "KB", "MB", "GB"):
+        if num_bytes < 1024:
+            return f"{num_bytes:.1f} {unit}"
+        num_bytes /= 1024
+    return f"{num_bytes:.1f} TB"
+
+
+def preview(files):
+    total = 0
+    for file in files:
+        try:
+            size = file.stat().st_size
+        except OSError:
+            size = 0
+        total += size
+        print(f"  {format_size(size):>10}  ~/{file.relative_to(HOME)}")
+    print(f"\n{len(files):,} files, {format_size(total)} before compression")
+    print("Dry run: no backup was written.")
+    return total
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Back up KDE settings and dotfiles to a zip.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="List the files that would be backed up, without writing a zip")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     distro = detect_distro()
     plasma_version = detect_plasma_version()
     session = detect_session()
@@ -108,6 +139,10 @@ def main():
     print("Scanning files...")
     files = collect_files(plasma_version, session)
     print(f"Found:    {len(files):,} files\n")
+
+    if args.dry_run:
+        preview(files)
+        return
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = SCRIPT_DIR / f"kde-dotfiles-{timestamp}.zip"

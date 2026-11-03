@@ -48,6 +48,8 @@ python3 save_dotfiles.py
 
 Output: `kde-dotfiles-YYYY-MM-DD_HH-MM-SS.zip` in the same folder as the script.
 
+`python3 save_dotfiles.py --dry-run` lists every file that would be backed up with its size and the total, without writing a zip.
+
 ---
 
 ### KDEdotfilesLOAD/load_dotfiles.py
@@ -71,6 +73,16 @@ What would you like to restore?
   ...
 ```
 
+**Preview first:** `python3 load_dotfiles.py --dry-run` asks the same questions, then lists each file as `new`, `overwrite` or `outside home` (unchanged files are counted but not listed) and changes nothing.
+
+```
+  overwrite    ~/.config/kwinrc
+  new          ~/.config/autostart/app.desktop
+
+1 new, 1 overwrite, 12 unchanged
+Dry run: nothing was changed.
+```
+
 ---
 
 ## What Gets Saved
@@ -92,6 +104,17 @@ What would you like to restore?
 | KWin scripts | `.local/share/kwin/` |
 | KDE Connect | `.config/kdeconnect/` |
 | Shell dotfiles | `.bashrc`, `.bash_profile`, `.zshrc`, `.profile` (+ X11 files if applicable) |
+
+---
+
+## Tests
+
+```bash
+pip install pytest tqdm
+python3 -m pytest tests
+```
+
+The tests use a temporary home folder, so your real settings are never touched.
 
 ---
 

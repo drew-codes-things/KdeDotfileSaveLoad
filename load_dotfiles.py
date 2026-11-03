@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import argparse
 import sys
+from collections import Counter
 import tty
 import termios
 import zipfile
@@ -87,6 +89,36 @@ def entry_matches(entry, prefixes):
     return False
 
 
+def restore_status(zf, entry):
+    dest = (HOME / entry).resolve()
+    if not dest.is_relative_to(HOME.resolve()):
+        return dest, "outside home"
+    if not dest.exists():
+        return dest, "new"
+    try:
+        if dest.is_file() and dest.read_bytes() == zf.read(entry):
+            return dest, "unchanged"
+    except OSError:
+        return dest, "unreadable"
+    return dest, "overwrite"
+
+
+def preview(zip_path, selected_prefixes):
+    with zipfile.ZipFile(zip_path) as zf:
+        entries = [e for e in zf.namelist() if entry_matches(e, selected_prefixes)]
+        statuses = [(entry, restore_status(zf, entry)[1]) for entry in entries]
+    if not statuses:
+        print("Nothing to restore.")
+        return Counter()
+    for entry, status in statuses:
+        if status != "unchanged":
+            print(f"  {status:<12} ~/{entry}")
+    counts = Counter(status for _, status in statuses)
+    print("\n" + ", ".join(f"{count} {status}" for status, count in sorted(counts.items())))
+    print("Dry run: nothing was changed.")
+    return counts
+
+
 def restore(zip_path, selected_prefixes):
     with zipfile.ZipFile(zip_path) as zf:
         to_restore = [e for e in zf.namelist() if entry_matches(e, selected_prefixes)]
@@ -112,7 +144,15 @@ def restore_permissions(dest, info):
         dest.chmod(mode)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Restore KDE settings from a kde-dotfiles backup.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="List which files would be created or overwritten, without changing anything")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     found = {path.resolve() for folder in SAVE_DIRS for path in folder.glob("kde-dotfiles-*.zip")}
     backups = sorted(found, key=lambda path: path.name, reverse=True)
     if not backups:
@@ -132,6 +172,9 @@ def main():
         sys.exit(0)
 
     print()
+    if args.dry_run:
+        preview(zip_path, selected_prefixes)
+        return
     restore(zip_path, selected_prefixes)
     print("\nDone. You may need to log out and back in for changes to take effect.")
 
