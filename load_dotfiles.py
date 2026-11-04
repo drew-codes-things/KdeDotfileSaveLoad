@@ -89,9 +89,17 @@ def entry_matches(entry, prefixes):
     return False
 
 
+def inside_home(dest):
+    try:
+        dest.relative_to(HOME.resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def restore_status(zf, entry):
     dest = (HOME / entry).resolve()
-    if not dest.is_relative_to(HOME.resolve()):
+    if not inside_home(dest):
         return dest, "outside home"
     if not dest.exists():
         return dest, "new"
@@ -127,7 +135,7 @@ def restore(zip_path, selected_prefixes):
             return
         for entry in tqdm(to_restore, unit="file", desc="Restoring", dynamic_ncols=True):
             dest = (HOME / entry).resolve()
-            if not dest.is_relative_to(HOME.resolve()):
+            if not inside_home(dest):
                 tqdm.write(f"  skipped: {entry} (points outside your home folder)")
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
