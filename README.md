@@ -10,6 +10,8 @@
 
 </div>
 
+![save_dotfiles.py listing what it would back up](screenshot.png)
+
 ---
 
 Two scripts - one saves, one restores. Run the save script on your current machine and it zips everything up. Run the load script on any KDE machine and pick exactly what you want back, category by category.
